@@ -1,0 +1,24 @@
+{
+    "sampling_freq": 250,
+    "low_freq": 0.1,
+    "high_freq": 40,
+    "channel_types": {
+      "AF3": "eog",
+      "F7": "eeg",
+      "F3": "eeg",
+      "FC5": "eeg",
+      "T7": "eeg",
+      "P7": "eeg",
+      "O1": "eeg",
+      "O2": "eeg",
+      "P8": "eeg",
+      "T8": "eeg",
+      "FC6": "eeg",
+      "F4": "eeg",
+      "F8": "eeg",
+      "AF4": "eog"
+    },
+    "montage_type": "standard_1020",
+    "eeg_reference": "average"
+  }
+  

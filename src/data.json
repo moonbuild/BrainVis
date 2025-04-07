@@ -1,0 +1,33 @@
+{
+    "sampling_freq": 250,
+    "low_freq": 0.1,
+    "high_freq": 40,
+    "channel_types": {
+      "AF3": "eog",
+      "F7": "eeg",
+      "F3": "eeg",
+      "FC5": "eeg",
+      "T7": "eeg",
+      "P7": "eeg",
+      "O1": "eeg",
+      "O2": "eeg",
+      "P8": "eeg",
+      "T8": "eeg",
+      "FC6": "eeg",
+      "F4": "eeg",
+      "F8": "eeg",
+      "AF4": "eog"
+    },
+    "event_data": {
+      "E1": [1, 0, 30, 10],
+      "E2": [2, 31, 61, 10],
+      "E3": [3, 62, 92, 10],
+      "EQ": [4, 93, 103, 10]
+    },
+    "event_duration": 10,
+    "epoch_tmin": -0.2,
+    "epoch_tmax": 5,
+    "montage_type": "standard_1020",
+    "eeg_reference": "average"
+  }
+  

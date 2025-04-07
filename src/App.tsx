@@ -1,35 +1,61 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import FileUploadCard from "./components/cards/fileUploadCard";
+import SettingsCard from "./components/cards/SettingsCard";
+import { ToastContainer, Zoom } from "react-toastify";
+import { VisualisationCard } from "./components/cards/VisualisationCard";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [file, setFile] = useState<File | null>(null);
+
+  const getInitialtheme = () => {
+    if (localStorage.getItem("theme")) {
+      return localStorage.getItem("theme") === "dark";
+    }
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  };
+
+  const [isDark, setIsDark] = useState<boolean>(getInitialtheme);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.toggle("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.toggle("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
+
+  const toggleDarkMode = () => setIsDark((prev) => !prev);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="min-h-screen bg-baseColor">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex flex-row justify-center gap-6 p-10">
+          <ToastContainer
+            position="top-right"
+            autoClose={2000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="colored"
+            transition={Zoom}
+          />
+          <FileUploadCard />
+          <SettingsCard isDark={isDark} toggleDarkMode={toggleDarkMode} />
+        </div>
+        <VisualisationCard />
+        </div>
+    </div>
+  );
 }
 
-export default App
+export default App;
