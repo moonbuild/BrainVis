@@ -24,6 +24,7 @@
       "E3": [3, 62, 92, 10],
       "EQ": [4, 93, 103, 10]
     },
+    "epoch_baseline":[null, 0],
     "event_duration": 10,
     "epoch_tmin": -0.2,
     "epoch_tmax": 5,
