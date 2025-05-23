@@ -1,69 +1,68 @@
 import { X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChannelInfoType } from "../../types/settings";
-import {
-  useChannelData,
-  useFileDataStore,
-} from "../../stores/eegSettingsStore";
+import { useCallback, useMemo, useState } from "react";
+import { useFileDataStore } from "../../stores/fileStore";
+import { toast } from "react-toastify";
+import { useEEGChannelStore } from "../../stores/eegSettingsStore";
 
-interface MultiSelectSearchProps {
-}
+interface MultiSelectSearchProps {}
 export default function MultiSelectSearch({}: MultiSelectSearchProps) {
-  const { channelNames } = useFileDataStore();
   const {
-    selectedChannelInfo,
-    selectChannel,
-    unselectChannel,
-    popLastSelectedChannel,
-  } = useChannelData();
+    allChannelsInfo,
+    selectedChannelsInfo,
+    addModifyChannel,
+    removeChannel,
+    popLastChannel
+  } = useEEGChannelStore();
+  
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState(false);
-
-  const handleSelect = useCallback((channel: ChannelInfoType) => {
-    selectChannel(channel);
-  }, []);
-
-  const handleUnselect = useCallback(
-    (channel: ChannelInfoType) => {
-      unselectChannel(channel);
-    },
-    [selectedChannelInfo]
-  );
+  const { file } = useFileDataStore();
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (
         e.key === "Backspace" &&
         inputValue === "" &&
-        selectedChannelInfo.length > 0
+        selectedChannelsInfo.length > 0
       ) {
-        popLastSelectedChannel();
+        popLastChannel();
       }
     },
-    [inputValue, selectedChannelInfo]
+    [inputValue, selectedChannelsInfo]
   );
 
-  const searchFilteredOptions = useMemo(() => {
-    return channelNames.filter(
-      (name) =>
-        !selectedChannelInfo.some((ch) => ch.name === name) &&
-        name.toLowerCase().includes(inputValue.toLowerCase())
-    );
-  }, [inputValue, channelNames, selectedChannelInfo]);
+  const filteredChannelInfo = useMemo(() => {
+    return allChannelsInfo.filter(
+      (originalChannel)=> selectedChannelsInfo.some((selectedChannel)=> originalChannel.name === selectedChannel.name) && originalChannel.name.toLowerCase().includes(inputValue.trim().toLowerCase())
+    )
+  }, [allChannelsInfo, selectedChannelsInfo, inputValue]);
 
+  const handleFocus = useCallback(() => {
+    if (!file) {
+      toast.warning("Please Select a file first", { autoClose: 3000 });
+      return;
+    }
+    if (allChannelsInfo.length == 0) {
+      toast.warning("Please wait while the channel names are fetched", {
+        autoClose: 3000,
+      });
+      return;
+    }
+    setOpen(true);
+  }, [file, allChannelsInfo]);
 
   return (
     <div className="w-full relative">
       <div className="p-2 rounded-md border border-grey-300">
         <div className="flex flex-wrap gap-2">
-          {selectedChannelInfo.map((channel) => (
+          {selectedChannelsInfo.map((channel) => (
             <span
               key={channel.name}
               className={`flex items-center rounded-md gap-1 text-sm px-2 py-1 cursor-pointer ${
                 channel.type === "eeg" ? "bg-blue-400" : "bg-green-400"
               }`}
               onClick={() => {
-                handleSelect({ name: channel.name });
+                addModifyChannel({ name: channel.name, type: channel.type === 'eeg' ? 'eog' : 'eeg' });
               }}
             >
               {channel.name}
@@ -72,7 +71,7 @@ export default function MultiSelectSearch({}: MultiSelectSearchProps) {
                 className="cursor-pointer hover:text-red-500"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleUnselect(channel);
+                  removeChannel(channel);
                 }}
               />
             </span>
@@ -83,21 +82,21 @@ export default function MultiSelectSearch({}: MultiSelectSearchProps) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => setOpen(true)}
+            onFocus={() => handleFocus()}
             onBlur={() => setOpen(false)}
           />
         </div>
       </div>
-      {open && searchFilteredOptions.length > 0 && (
+      {open && filteredChannelInfo.length > 0 && (
         <div className="absolute left-0 right-0 z-10 bg-white  mt-2 p-2 overflow-y-auto rounded-md shadow-md max-h-40 border border-grey-300 ">
-          {searchFilteredOptions.map((name) => (
+          {filteredChannelInfo.map((channel) => (
             <div
-              key={name}
+              key={channel.name}
               className="p-1 hover:bg-grey-100 cursor-pointer"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => handleSelect({ name, type: "eeg" })}
+              onClick={() => addModifyChannel({ name: channel.name, type: channel.type })}
             >
-              {name}
+              {channel.name}
             </div>
           ))}
         </div>

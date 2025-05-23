@@ -1,6 +1,6 @@
 type ChannelInfoType = {
   name: string;
-  type?: string;
+  type?: "eeg" | "eog";
 };
 
 interface EEGSettings {
