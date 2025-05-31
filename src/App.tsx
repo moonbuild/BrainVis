@@ -1,98 +1,84 @@
-import { useEffect, useRef, useState } from "react";
-import FileUploadCard from "./components/cards/fileUploadCard";
+import { useEffect, useState } from "react";
+import FileUploadCard from "./components/cards/fileUpload/fileUploadCard";
 import SettingsCard from "./components/cards/settings/SettingsCard";
 import { ToastContainer, Zoom } from "react-toastify";
-import { VisualisationCard } from "./components/cards/VisualisationCard";
-import { useFilterVis } from "./services/hooks/useFilterVis";
-import { useEvents } from "./services/hooks/useEvents";
-import { toastAPIHandler } from "./shared/toastAPI";
+import { VisualisationCard } from "./components/cards/visualisations/VisualisationCard";
 import { useEEGImageData } from "./stores/eegImageData";
 import { useMetadataStore } from "./stores/summaryStore";
-
+import { useFilterRequest } from "./services/hooks/useFilterRequest";
+import { useEventsRequest } from "./services/hooks/useEventsRequest";
+import { useToastAPI } from "./services/hooks/useToastAPI";
+import { activeTabItem } from "./types/VisualisationCard";
 
 function App() {
   // store
   const { setFilterPlot, setEpochsPlot } = useEEGImageData();
   const { setMetadata } = useMetadataStore();
+  const [visualisationActiveTab, setVisualisationActiveTab] =
+    useState<activeTabItem>("filter");
 
   // mutate functions
   const {
     mutate: filterMutate,
-    data: filterData,
     isPending: filterIsPending,
     isSuccess: filterIsSuccess,
     isError: filterIsError,
     error: filterError,
-  } = useFilterVis();
+  } = useFilterRequest({
+    onSuccess: (data) => {
+      setFilterPlot(data.filter_plot);
+      setMetadata(data.metadata);
+      setVisualisationActiveTab("filter")
+    },
+  });
 
   const {
     mutate: eventsMutate,
-    data: eventsData,
     isPending: eventsIsPending,
     isSuccess: eventsIsSuccess,
     isError: eventsIsError,
     error: eventsError,
-  } = useEvents();
+  } = useEventsRequest({
+    onSuccess: (data) => {
+      setEpochsPlot(data.epochs_plot);
+      setMetadata(data.metadata);
+      setVisualisationActiveTab("events")
+    },
+  });
 
-  const filterToastRef = useRef<string | number | null>(null);
-  const eventToastRef = useRef<string | number | null>(null);
-  function handleFilterFunc(file:File, payload:string){
-    filterMutate({file, payload})
+  function handleFilterFunc(file: File, payload: string) {
+    filterMutate({ file, payload });
   }
-  function handleEventFunc(file:File, payload:string){
-    eventsMutate({file, payload})
+
+  function handleEventFunc(file: File, payload: string) {
+    eventsMutate({ file, payload });
   }
-  useEffect(() => {
-    const loadingMessage = "Filter Comparision Plot is being fetched";
-    const successMessage = "Filter Comparision Plot is ready!";
-    toastAPIHandler(
-      loadingMessage,
-      successMessage,
-      filterIsPending,
-      filterIsSuccess,
-      filterIsError,
-      filterError,
-      filterToastRef
-    );
-    if (filterIsSuccess && filterData) {
-      setFilterPlot(filterData.filter_plot);
-      setMetadata(filterData.metadata);
-    }
-  }, [
-    filterIsPending,
-    filterIsSuccess,
-    filterIsError,
-    filterError,
-    filterToastRef,
-    filterData,
-  ]);
 
-  useEffect(() => {
-    const loadingMessage = "Event Plots are being fetched";
-    const successMessage = "Event Plots have been fetched!";
-
-    toastAPIHandler(
-      loadingMessage,
-      successMessage,
-      eventsIsPending,
-      eventsIsSuccess,
-      eventsIsError,
-      eventsError,
-      eventToastRef
-    );
-    if (eventsIsSuccess) {
-      setEpochsPlot(eventsData.epochs_plot);
-      setMetadata(eventsData.metadata);
+  useToastAPI(
+    {
+      loadingMessage: "Filter Comparision Plot is being fetched",
+      successMessage: "Filter Comparision Plot is ready!",
+    },
+    {
+      isPending: filterIsPending,
+      isSuccess: filterIsSuccess,
+      isError: filterIsError,
+      error: filterError,
     }
-  }, [
-    eventsIsPending,
-    eventsIsSuccess,
-    eventsIsError,
-    eventsError,
-    eventToastRef,
-    eventsData,
-  ]);
-  
+  );
+  useToastAPI(
+    {
+      loadingMessage: "Event Plots are being fetched",
+      successMessage: "Event Plots are ready!",
+    },
+    {
+      isPending: eventsIsPending,
+      isSuccess: eventsIsSuccess,
+      isError: eventsIsError,
+      error: eventsError,
+    }
+  );
+
   const getInitialtheme = () => {
     if (localStorage.getItem("theme")) {
       return localStorage.getItem("theme") === "dark";
@@ -143,7 +129,10 @@ function App() {
             handleEventFunc={handleEventFunc}
           />
         </div>
-        <VisualisationCard />
+        <VisualisationCard
+          visualisationActiveTab={visualisationActiveTab}
+          setVisualisationActiveTab={setVisualisationActiveTab}
+        />
       </div>
     </div>
   );

@@ -13,12 +13,98 @@ export const DownloadImages = ({
   filterPlot?: ImageURLBlob;
   metadata?: MetaData;
 }) => {
-  if (Object.keys(epochsPlotMap).length === 0) return;
-
   const [downloadURL, setDownloadURL] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
+  const processEventPlotFile = async (
+    zip: Zip,
+    eventName: string,
+    plotType: string,
+    plotData: ImageURLBlob,
+    processedFiles: number
+  ): Promise<boolean> => {
+    if (!plotData || !plotData.blob) {
+      console.warn(`Missing blob for ${eventName} - ${plotType}`);
+      return false;
+    }
+    try {
+      const arrayBuffer = await plotData.blob.arrayBuffer();
+      const buffer = new Uint8Array(arrayBuffer);
+
+      const filePath = `${eventName}/${eventName}_${plotType}.png`;
+
+      const asyncZip = new AsyncZipDeflate(filePath);
+
+      asyncZip.ondata = (err, data, final) => {
+        if (err) {
+          console.error("There was an error when compressing the files: ", err);
+          return;
+        }
+        if (final) processedFiles++;
+      };
+      zip.add(asyncZip);
+      asyncZip.push(buffer, true);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return true;
+    } catch (err) {
+      console.error(
+        `Error processing the plot ${plotType} of Event: ${eventName}: `,
+        err
+      );
+      return false;
+    }
+  };
+
+  const processFilterMap = async (
+    zip: Zip,
+    filterPlot: ImageURLBlob
+  ): Promise<boolean> => {
+    try {
+      const arrayBuffer = await filterPlot.blob.arrayBuffer();
+      const buffer = new Uint8Array(arrayBuffer);
+      const filename = "filter_comparision.png";
+      const asyncZip = new AsyncZipDeflate(filename);
+      asyncZip.ondata = (err, data, final) => {
+        if (err) {
+          console.error(
+            "There was an error when compressing filter comparision image :",
+            err
+          );
+          return;
+        }
+      };
+      zip.add(asyncZip);
+      asyncZip.push(buffer, true);
+      return true;
+    } catch (err) {
+      console.error("Error processing filterPlot blob: ", err);
+      return false;
+    }
+  };
+  const processMetadata = async (zip: Zip, metadata:MetaData): Promise<boolean> => {
+    try {
+      const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], {
+        type: "application/json",
+      });
+      const arrayBuffer = await metadataBlob.arrayBuffer();
+      const buffer = new Uint8Array(arrayBuffer);
+      const filename = "metadata.json";
+      const asyncZip = new AsyncZipDeflate(filename);
+      asyncZip.ondata = (err, data, final) => {
+        if (err) {
+          console.error("There was an error when compressing metadata: ", err);
+          return;
+        }
+      };
+      zip.add(asyncZip);
+      asyncZip.push(buffer, true);
+      return true;
+    } catch (err) {
+      console.error("Error serializing metadata: ", err);
+      return false;
+    }
+  };
   const generateZip = async (epochsPlotMap: EpochsPlotMap) => {
     setIsLoading(true);
     setError("");
@@ -26,6 +112,7 @@ export const DownloadImages = ({
     try {
       const zip = new Zip();
       const zipData: Uint8Array[] = [];
+
       zip.ondata = (err, data, final) => {
         if (err) {
           console.error("Error in zip data handling: ", err);
@@ -33,92 +120,26 @@ export const DownloadImages = ({
         }
         zipData.push(data);
       };
-      let totalFiles = 0;
-
       let processedFiles = 0;
+      let totalFiles = 0;
 
       for (const [eventName, eventPlot] of Object.entries(epochsPlotMap)) {
         for (const [plotType, plotData] of Object.entries(eventPlot)) {
-          if (!plotData || !plotData.blob) {
-            console.warn(`Missing blob for ${eventName} - ${plotType}`);
-            continue;
-          }
           totalFiles++;
-          try {
-            const arrayBuffer = await plotData.blob.arrayBuffer();
-            const buffer = new Uint8Array(arrayBuffer);
-
-            const filePath = `${eventName}/${eventName}_${plotType}.png`;
-
-            const asyncZip = new AsyncZipDeflate(filePath);
-
-            asyncZip.ondata = (err, data, final) => {
-              if (err) {
-                console.error(
-                  "There was an error when compressing the files: ",
-                  err
-                );
-                return;
-              }
-              if (final) {
-                processedFiles++;
-              }
-            };
-            zip.add(asyncZip);
-            asyncZip.push(buffer, true);
-            await new Promise((resolve) => setTimeout(resolve, 10));
-          } catch (err) {
-            console.error(
-              `Error processing the plot ${plotType} of Event: ${eventName}: `,
-              err
-            );
-          }
+          processEventPlotFile(
+            zip,
+            eventName,
+            plotType,
+            plotData,
+            processedFiles
+          );
         }
       }
       if (filterPlot?.blob) {
-        try {
-          const arrayBuffer = await filterPlot.blob.arrayBuffer();
-          const buffer = new Uint8Array(arrayBuffer);
-          const filename = "filter_comparision.png";
-          const asyncZip = new AsyncZipDeflate(filename);
-          asyncZip.ondata = (err, data, final) => {
-            if (err) {
-              console.error(
-                "There was an error when compressing filter comparision image :",
-                err
-              );
-              return;
-            }
-          };
-          zip.add(asyncZip);
-          asyncZip.push(buffer, true);
-        } catch (err) {
-          console.error("Error processing filterPlot blob: ", err);
-        }
+        processFilterMap(zip, filterPlot)
       }
       if (metadata) {
-        try {
-          const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], {
-            type: "application/json",
-          });
-          const arrayBuffer = await metadataBlob.arrayBuffer();
-          const buffer = new Uint8Array(arrayBuffer);
-          const filename= "metadata.json"
-          const asyncZip = new AsyncZipDeflate(filename);
-          asyncZip.ondata = (err, data, final) => {
-            if (err) {
-              console.error(
-                "There was an error when compressing metadata: ",
-                err
-              );
-              return;
-            }
-          };
-          zip.add(asyncZip);
-          asyncZip.push(buffer, true);
-        } catch (err) {
-          console.error("Error serializing metadata: ", err);
-        }
+        processMetadata(zip, metadata)
       }
       const waitForProcessing = async () => {
         const maxWait = 10000;
