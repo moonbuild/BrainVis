@@ -8,5 +8,8 @@ export const fetchFilterVis = async ({file, payload}:FetchFileDataParams): Promi
     const response = await api.post("/eeg/get_filter_img", formData, {
         responseType:'blob'
     })
+    if (!response){
+        throw new Error("There was an error fetching the response");
+    }
     return response.data;
 }

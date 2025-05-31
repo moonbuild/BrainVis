@@ -23,4 +23,20 @@ interface EEGErrors {
   epochTmax?: string;
 }
 
-export type { ChannelInfoType, EEGSettings, EEGErrors };
+interface SettingsDataProps {
+  samplingFreq?: number;
+  lowFreq?: number;
+  highFreq?: number;
+  montageType?: string;
+  eegReference?: string;
+  epochTmin?: number;
+  epochTmax?: number;
+  baseline?: [number | undefined, number | undefined];
+}
+
+export type {
+  ChannelInfoType,
+  EEGSettings,
+  EEGErrors,
+  SettingsDataProps,
+};

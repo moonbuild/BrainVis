@@ -1,6 +1,9 @@
 import { MetaData } from "../stores/summaryStore";
 import { EpochsPlotMap, ImageURLBlob } from "./Plot";
 
+export type fetchChannelNamesParams = {
+  file:File;
+}
 export type FetchFileDataParams = {
   file: File;
   payload: string;

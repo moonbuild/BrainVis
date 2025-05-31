@@ -1,17 +1,15 @@
 import { Moon, Settings, Sun, X } from "lucide-react";
-import MultiSelectSearch from "../../elements/multiSelectSearch";
-import {
-  useCallback,
-  useState,
-} from "react";
-
-import { EEGErrors } from "../../../types/settings";
+import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
+
+import MultiSelectSearch from "../../elements/multiSelectSearch";
+import { EEGErrors, SettingsDataProps } from "../../../types/Settings";
 import { EventTableType, initialEvent } from "../../../types/eventTable";
 import EventTable from "../../elements/eventTable";
 import { useEEGChannelStore } from "../../../stores/eegSettingsStore";
 import CustomLabelInput from "./CustomLabelInput";
 import { useFileDataStore } from "../../../stores/fileStore";
+import { initialSettingsData } from "./initialSettingsData";
 
 interface SettingsCardProps {
   isDark: boolean;
@@ -30,90 +28,101 @@ function SettingsCard({
   const { file } = useFileDataStore();
   const { selectedChannelsInfo } = useEEGChannelStore();
 
-  interface SettingsDataProps {
-    samplingFreq?: number;
-    lowFreq?: number;
-    highFreq?: number;
-    montageType?: string;
-    eegReference?: string;
-    epochTmin?: number;
-    epochTmax?: number;
-    baseline?: [number | undefined, number | undefined];
-  }
   // data
-  const [settingsData, setSettingsData] = useState<SettingsDataProps>({
-    samplingFreq: 250,
-    lowFreq: 0.1,
-    highFreq: 40,
-    montageType: "standard_1020",
-    eegReference: "average",
-    epochTmin: -0.2,
-    epochTmax: 0.5,
-    baseline: [undefined, 0],
-  });
-  const [baselineString, setBaselineString] = useState<string>("None, 0");
-  const [events, setEvents] = useState<EventTableType[]>(initialEvent);
+  const [settingsData, setSettingsData] = useState<SettingsDataProps>({});
+  const [baselineString, setBaselineString] = useState<string>("");
 
-  const [SettingsErrors, setSettingsErrors] = useState<EEGErrors>({});
+  const [events, setEvents] = useState<EventTableType[]>(initialEvent);
+  const [isEventsTableInvalid, setIsEventsTableInvalid] =
+    useState<boolean>(false);
+
+  const [settingsErrors, setSettingsErrors] = useState<EEGErrors>({});
 
   // drawer
   const [showDrawer, setShowDrawer] = useState(false);
   const openDrawer = () => setShowDrawer(true);
   const closeDrawer = () => setShowDrawer(false);
 
-  const checkBaseValidity = useCallback(
-    (filterFetch: boolean) => {
-      const newErrors: EEGErrors = {};
+  // const checkBaseValidity = useCallback(
+  //   (filterFetch: boolean) => {
+  //     const newErrors: EEGErrors = {};
+      // if (!settingsData.samplingFreq)
+      //   newErrors.samplingFreq = "Sampling Freq cannot be empty";
+      // if (!settingsData.lowFreq) newErrors.lowFreq = "Low Freq cannot be empty";
+      // if (!settingsData.highFreq)
+      //   newErrors.highFreq = "High Freq cannot be empty";
+      // if (!settingsData.montageType)
+      //   newErrors.montageType = "Montage Type cannot be empty";
+      // if (!settingsData.eegReference)
+      //   newErrors.eegReference = "EEG Reference cannot be empty";
+      // if (!filterFetch) {
+      //   if (!settingsData.epochTmin)
+      //     newErrors.montageType = "Epoch Tmin cannot be empty";
+      //   if (!settingsData.epochTmax)
+      //     newErrors.montageType = "Epoch Tmax cannot be empty";
+      //   if (!settingsData.baseline)
+      //     newErrors.montageType = "Baseline cannot be empty";
+      // }
+  //     const noErrors = Object.values(newErrors).every((err) => err === "");
+  //     setSettingsErrors((prev) => ({ ...prev, ...newErrors }));
+  //     return noErrors;
+  //   },
+  //   [settingsData]
+  // );
 
-      if (!settingsData.samplingFreq)
-        newErrors.samplingFreq = "Sampling Freq cannot be empty";
-      if (!settingsData.lowFreq) newErrors.lowFreq = "Low Freq cannot be empty";
-      if (!settingsData.highFreq)
-        newErrors.highFreq = "High Freq cannot be empty";
-      if (!settingsData.montageType)
-        newErrors.montageType = "Montage Type cannot be empty";
-      if (!settingsData.eegReference)
-        newErrors.eegReference = "EEG Reference cannot be empty";
-      if (!filterFetch) {
-        if (!settingsData.epochTmin)
-          newErrors.montageType = "Epoch Tmin cannot be empty";
-        if (!settingsData.epochTmax)
-          newErrors.montageType = "Epoch Tmax cannot be empty";
-        if (!settingsData.baseline)
-          newErrors.montageType = "Baseline cannot be empty";
+  const raiseExpectedValidity = useCallback(
+    (filterFetch: boolean) => {
+      if (!file) {
+        toast.error("Please Provide an Input EDF file before submit", {
+          autoClose: 3000,
+        });
+        return false;
       }
-      const noErrors = Object.values(newErrors).every((err) => err === "");
-      setSettingsErrors((prev) => ({ ...prev, ...newErrors }));
-      return noErrors;
+      if (selectedChannelsInfo.length === 0) {
+        toast.error(
+          "Please select channels that u want in you visualisation, Blue is EEG, Green is EOG",
+          {
+            autoClose: 3000,
+          }
+        );
+        return false;
+      }
+      const tempErrors = filterFetch
+        ? [
+            settingsErrors.samplingFreq,
+            settingsErrors.lowFreq,
+            settingsErrors.highFreq,
+            settingsErrors.eegReference,
+            settingsErrors.montageType,
+          ]
+        : Object.values(settingsErrors);
+      const noErrors =
+        Object.values(tempErrors).every((error) => !error) &&
+        selectedChannelsInfo.length > 0;
+      if (
+        (filterFetch && !noErrors) ||
+        (!filterFetch && (isEventsTableInvalid || !noErrors))
+      ) {
+        toast.error("Invalid Configuration. Provide correct input Values", {
+          autoClose: 3000,
+        });
+        return false;
+      }
+      return true;
     },
-    [settingsData]
+    [file, selectedChannelsInfo, settingsErrors]
   );
 
-  const raiseExpectedValidity = useCallback(() => {
-    if (!file) {
-      toast.error("Please Provide an Input EDF file before submit", {
-        autoClose: 3000,
-      });
-      return false;
-    }
-    const noErrors = Object.values(SettingsErrors).every((error) => !error);
-    if (!noErrors) {
-      toast.error("Invalid Configuration. Provide correct input Values", {
-        autoClose: 3000,
-      });
-      return false;
-    }
-    return true;
-  }, [file, SettingsErrors]);
-
   const handleFilterFetch = useCallback(() => {
-    const baseValidity = checkBaseValidity(true);
-    const expectedValidity = raiseExpectedValidity();
-    if (!baseValidity || !expectedValidity || !file) return;
-
-    const { samplingFreq, lowFreq, highFreq, montageType, eegReference } =
-      settingsData;
-
+    const expectedValidity = raiseExpectedValidity(true);
+    if (!expectedValidity || !file) return;
+        const {
+      samplingFreq= initialSettingsData.samplingFreq,
+      lowFreq= initialSettingsData.lowFreq,
+      highFreq= initialSettingsData.highFreq,
+      montageType= initialSettingsData.montageType,
+      eegReference= initialSettingsData.eegReference,
+    } = settingsData;
     const finalChannelTypes: Record<string, string> = {};
     selectedChannelsInfo.forEach((ch) => {
       finalChannelTypes[ch.name] = ch.type ?? "eeg";
@@ -130,9 +139,8 @@ function SettingsCard({
   }, [file, settingsData, selectedChannelsInfo]);
 
   const handleEventsFetch = useCallback(() => {
-    const baseValidity = checkBaseValidity(true);
-    const expectedValidity = raiseExpectedValidity();
-    if (!baseValidity || !expectedValidity || !file) return;
+    const expectedValidity = raiseExpectedValidity(false);
+    if (!expectedValidity || !file) return;
 
     const finalChannelTypes: Record<string, string> = {};
     selectedChannelsInfo.forEach((ch) => {
@@ -143,14 +151,14 @@ function SettingsCard({
       eventData[name] = [id, startTime, endTime, duration];
     });
     const {
-      samplingFreq,
-      lowFreq,
-      highFreq,
-      epochTmin,
-      epochTmax,
-      baseline,
-      montageType,
-      eegReference,
+      samplingFreq=initialSettingsData.samplingFreq,
+      lowFreq=initialSettingsData.lowFreq,
+      highFreq=initialSettingsData.highFreq,
+      epochTmin=initialSettingsData.epochTmin,
+      epochTmax=initialSettingsData.epochTmax,
+      baseline=initialSettingsData.baseline,
+      montageType=initialSettingsData.montageType,
+      eegReference=initialSettingsData.eegReference,
     } = settingsData;
 
     const payload = JSON.stringify({
@@ -169,36 +177,40 @@ function SettingsCard({
     closeDrawer();
   }, [file, selectedChannelsInfo, events, settingsData]);
 
-  const validateField = (name: keyof typeof settingsData, value: string) => {
-    let error = "";
-    switch (name) {
-      case "montageType":
-        if (value.toString().trim() === "")
-          error = "Montage Type cannot be empty";
-        break;
-      case "eegReference":
-        if (value.toString().trim() === "")
-          error = "EEG Reference cannot be empty";
-        break;
-    }
-    return error;
-  };
+  // const validateField = (name: keyof typeof settingsData, value: string) => {
+  //   let error = "";
+  //   switch (name) {
+  //     case "montageType":
+  //       if (value.toString().trim() === "")
+  //         error = "Montage Type cannot be empty";
+  //       break;
+  //     case "eegReference":
+  //       if (value.toString().trim() === "")
+  //         error = "EEG Reference cannot be empty";
+  //       break;
+  //   }
+  //   return error;
+  // };
 
-  const handleChange = (name: keyof typeof settingsData, value: string) => {
-    const error = validateField(name, value);
+  const handleChange = (
+    name: keyof typeof settingsData,
+    value: string,
+    type: "number" | "string"
+  ) => {
+    // const error = validateField(name, value);
     setSettingsData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === "string" ? value : Number(value),
     }));
-    setSettingsErrors((prev) => ({
-      ...prev,
-      [name]: error,
-    }));
+    // setSettingsErrors((prev) => ({
+    //   ...prev,
+    //   [name]: error,
+    // }));
   };
 
   const handleBaselineChange = (value: string) => {
     setBaselineString(value);
-    let [val1, val2] = value.split(",").map((v) => v.trim().toLowerCase());
+    const [val1, val2] = value.split(",").map((v) => v.trim().toLowerCase());
     const parsedBaselines: [number | undefined, number | undefined] = [
       val1 === "none" || val1 === "" ? undefined : Number(val1),
       val2 === "none" || val2 === "" ? undefined : Number(val2),
@@ -218,6 +230,7 @@ function SettingsCard({
             <button
               className="p-2 rounded-full hover:bg-gray-100 transition-colors"
               onClick={toggleDarkMode}
+              hidden
             >
               {isDark ? (
                 <Moon className="text-gray-600" size={18} />
@@ -237,50 +250,65 @@ function SettingsCard({
           <div className="grid grid-cols-3 gap-4">
             <CustomLabelInput
               label="Sampling freq"
-              type="number"
               name="samplingFreq"
               value={settingsData.samplingFreq}
+              placeholder="Enter sampling freq"
+              onChange={(e) =>
+                handleChange("samplingFreq", e.target.value, "number")
+              }
             />
             <CustomLabelInput
               label="Low freq"
-              type="number"
               name="lowFreq"
               value={settingsData.lowFreq}
+              placeholder="Enter low freq"
+              onChange={(e) =>
+                handleChange("lowFreq", e.target.value, "number")
+              }
             />
             <CustomLabelInput
               label="High freq"
-              type="number"
               name="highFreq"
               value={settingsData.highFreq}
+              placeholder="Enter high freq"
+              onChange={(e) =>
+                handleChange("highFreq", e.target.value, "number")
+              }
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <CustomLabelInput
               label="Montage Type"
-              type="text"
               name="montageType"
               value={settingsData.montageType}
-              errorMessage={SettingsErrors.montageType}
+              placeholder="Enter montage type"
+              errorMessage={settingsErrors.montageType}
+              onChange={(e) =>
+                handleChange("montageType", e.target.value, "string")
+              }
             />
             <CustomLabelInput
               label="EEG Reference"
-              type="text"
               name="eegReference"
               value={settingsData.eegReference}
-              errorMessage={SettingsErrors.eegReference}
+              placeholder="Enter eeg reference"
+              errorMessage={settingsErrors.eegReference}
+              onChange={(e) =>
+                handleChange("eegReference", e.target.value, "string")
+              }
             />
           </div>
         </div>
         <div className="mt-8 flex justify-end space-x-1">
           <button
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+            className="cursor-pointer px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
             onClick={handleFilterFetch}
           >
             Submit
           </button>
           <button
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+            className="cursor-pointer px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
             onClick={openDrawer}
           >
             Advanced Options
@@ -311,43 +339,52 @@ function SettingsCard({
                   <div className="grid grid-cols-3 gap-6">
                     <CustomLabelInput
                       label="Sampling freq"
-                      type="number"
                       name="samplingFreq"
                       value={settingsData.samplingFreq}
+                      placeholder="Enter sampling freq"
+                      onChange={(e) =>
+                        handleChange("samplingFreq", e.target.value, "number")
+                      }
                     />
                     <CustomLabelInput
                       label="Low freq"
-                      type="number"
                       name="lowFreq"
                       value={settingsData.lowFreq}
+                      placeholder="Enter low freq"
+                      onChange={(e) =>
+                        handleChange("lowFreq", e.target.value, "number")
+                      }
                     />
                     <CustomLabelInput
                       label="High freq"
-                      type="number"
                       name="highFreq"
                       value={settingsData.highFreq}
+                      placeholder="Enter high freq"
+                      onChange={(e) =>
+                        handleChange("highFreq", e.target.value, "number")
+                      }
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-6">
                     <CustomLabelInput
                       label="Montage Type"
-                      type="text"
                       name="montageType"
                       value={settingsData.montageType}
-                      errorMessage={SettingsErrors.montageType}
+                      placeholder="Enter montage type"
+                      errorMessage={settingsErrors.montageType}
                       onChange={(e) =>
-                        handleChange("montageType", e.target.value)
+                        handleChange("montageType", e.target.value, "string")
                       }
                     />
                     <CustomLabelInput
                       label="EEG Reference"
-                      type="text"
                       name="eegReference"
                       value={settingsData.eegReference}
-                      errorMessage={SettingsErrors.eegReference}
+                      placeholder="Enter eeg reference"
+                      errorMessage={settingsErrors.eegReference}
                       onChange={(e) =>
-                        handleChange("eegReference", e.target.value)
+                        handleChange("eegReference", e.target.value, "string")
                       }
                     />
                   </div>
@@ -356,33 +393,43 @@ function SettingsCard({
                       Event Time Data
                     </h3>
                     <div className="flex justify-center">
-                      <EventTable events={events} setEvents={setEvents} />
+                      <EventTable
+                        events={events}
+                        setEvents={setEvents}
+                        setIsEventsTableInvalid={setIsEventsTableInvalid}
+                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-6">
                     <CustomLabelInput
                       label=" Epoch Tmin"
-                      type="number"
                       name="epochTmin"
                       value={settingsData.epochTmin}
+                      placeholder="Enter epoch tmin"
+                      onChange={(e) =>
+                        handleChange("epochTmin", e.target.value, "number")
+                      }
                     />
                     <CustomLabelInput
                       label=" Epoch Tmax"
-                      type="number"
                       name="epochTmax"
                       value={settingsData.epochTmax}
+                      placeholder="Enter epoch tmax"
+                      onChange={(e) =>
+                        handleChange("epochTmax", e.target.value, "number")
+                      }
                     />
                     <CustomLabelInput
-                      label=" Epoch Baseline"
-                      type="text"
+                      label="Epoch Baseline"
                       name="epochBaseline"
                       value={baselineString}
+                      placeholder="Enter epoch baseline"
                       onChange={(e) => handleBaselineChange(e.target.value)}
                     />
                   </div>
                   <div className="mt-8 flex justify-end space-x-1">
                     <button
-                      className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+                      className="cursor-pointer px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
                       onClick={handleEventsFetch}
                     >
                       Submit

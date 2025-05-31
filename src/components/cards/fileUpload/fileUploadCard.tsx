@@ -1,59 +1,53 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback} from "react";
 import { useDropzone } from "react-dropzone";
-import { useChannelNames } from "../../services/hooks/useChannels";
-import { useFileDataStore } from "../../stores/fileStore";
-import { toastAPIHandler } from "../../shared/toastAPI";
-import { useEEGChannelStore } from "../../stores/eegSettingsStore";
-import { ChannelInfoType } from "../../types/settings";
+import { useChannelNames } from "../../../services/hooks/useChannels";
+import { useFileDataStore } from "../../../stores/fileStore";
+import { useEEGChannelStore } from "../../../stores/eegSettingsStore";
+import { ChannelInfoType } from "../../../types/Settings";
+import { useToastAPI } from "../../../services/hooks/useToastAPI";
 
 function FileUploadCard() {
   const { file, setFile } = useFileDataStore();
-  const {setAllChannelsInfo} = useEEGChannelStore();
+  const { setAllChannelsInfo } = useEEGChannelStore();
   const {
     mutate: uploadFile,
     isPending: chNamesIsPending,
     isSuccess: chNamesIsSuccess,
     isError: chNamesIsError,
     error: chNamesError,
-    data,
-  } = useChannelNames();
-  const chNamesToastRef = useRef<string | number | null>(null);
+  } = useChannelNames({
+    onSuccess: (data) => {
+      const channelData: ChannelInfoType[] = data.map((channel) => ({
+        name: channel,
+        type: "eeg",
+      }));
+      setAllChannelsInfo(channelData);
+    },
+  });
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
       if (file && file.name.endsWith(".edf")) {
         setFile(file);
-        uploadFile(file);
+        uploadFile({ file });
       }
     },
     [setFile, uploadFile]
   );
 
-  useEffect(() => {
-    const loadingMessage = "Fetching Channel Names...";
-    const successMessage = "Channel Names fetched!";
-    toastAPIHandler(
-      loadingMessage,
-      successMessage,
-      chNamesIsPending,
-      chNamesIsSuccess,
-      chNamesIsError,
-      chNamesError,
-      chNamesToastRef
-    );
-    if (chNamesIsSuccess && data) {
-      const temp:ChannelInfoType[] = data.map(channel=>({name:channel, type:'eeg'}))
-      setAllChannelsInfo(temp);
+  useToastAPI(
+    {
+      loadingMessage: "Fetching Channel Names...",
+      successMessage: "Channel Names fetched!",
+    },
+    {
+      isPending: chNamesIsPending,
+      isSuccess: chNamesIsSuccess,
+      isError: chNamesIsError,
+      error: chNamesError,
     }
-  }, [
-    chNamesIsPending,
-    chNamesIsSuccess,
-    chNamesIsError,
-    chNamesError,
-    chNamesToastRef,
-    data,
-  ]);
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -62,17 +56,19 @@ function FileUploadCard() {
 
   return (
     <>
-      <div className="w-1/4  bg-cardColor rounded-[10%] shadow-lg pb-1 flex flex-col">
-        <div className="px-6 pt-24 text-center">
+      <div
+        className="w-1/4 bg-cardColor rounded-[10%] shadow-lg flex flex-col items-center
+      gap-2
+        pt-30 pb-10 "
+      >
+        <div className="text-center py-4">
           <h2 className="text-xl font-semibold ">Upload an EDF File</h2>
-          <p className="text-sm text-grey-500 my-1 ">
-            Only EDF Files are allowed
-          </p>
+          <p className="text-sm text-grey-500">Only EDF Files are allowed</p>
         </div>
-        <div className="flex flex-grow flex-col  items-center justify-center gap-4 px-6 py-8">
+        <div className="flex flex-col w-full items-center justify-between  gap-4">
           <div
             {...getRootProps()}
-            className={`flex items-center justify-center border-2 border-dashed rounded-3xl border-gray-500 p-1 hover:border-gray-800 ${
+            className={`p-1 flex items-center justify-center border-2 border-dashed rounded-3xl border-gray-500  hover:border-gray-800 ${
               isDragActive ? "border-gray-800" : "border-gray-500"
             } ${file ? "border-none" : "border-2"}`}
           >
@@ -169,9 +165,9 @@ function FileUploadCard() {
             )}
           </div>
           {file && (
-            <div className="w-full mt-2 px-2 flex justify-center flex-col items-center">
+            <div className="w-full flex justify-center flex-col items-center">
               <p className="text-sm font-normal ">Selected File: </p>
-              <div className="text-sm underline font-light truncate overflow-hidden max-w-full whitespace-nowrap">
+              <div className="text-sm underline truncate font-light overflow-hidden w-[80%] whitespace-nowrap">
                 {file.name}
               </div>
             </div>

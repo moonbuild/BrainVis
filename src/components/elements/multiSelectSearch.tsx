@@ -4,16 +4,14 @@ import { useFileDataStore } from "../../stores/fileStore";
 import { toast } from "react-toastify";
 import { useEEGChannelStore } from "../../stores/eegSettingsStore";
 
-interface MultiSelectSearchProps {}
-export default function MultiSelectSearch({}: MultiSelectSearchProps) {
+export default function MultiSelectSearch() {
   const {
     allChannelsInfo,
     selectedChannelsInfo,
     addModifyChannel,
     removeChannel,
-    popLastChannel
+    popLastChannel,
   } = useEEGChannelStore();
-  
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState(false);
   const { file } = useFileDataStore();
@@ -32,9 +30,15 @@ export default function MultiSelectSearch({}: MultiSelectSearchProps) {
   );
 
   const filteredChannelInfo = useMemo(() => {
-    return allChannelsInfo.filter(
-      (originalChannel)=> selectedChannelsInfo.some((selectedChannel)=> originalChannel.name === selectedChannel.name) && originalChannel.name.toLowerCase().includes(inputValue.trim().toLowerCase())
-    )
+    return allChannelsInfo.filter((originalChannel) => {
+      const notSelected = selectedChannelsInfo.every(
+        (selectedChannel) => selectedChannel.name !== originalChannel.name
+      );
+      const searchInputMatch = originalChannel.name
+        .toLowerCase()
+        .includes(inputValue.trim().toLowerCase());
+      return notSelected && searchInputMatch 
+    });
   }, [allChannelsInfo, selectedChannelsInfo, inputValue]);
 
   const handleFocus = useCallback(() => {
@@ -53,7 +57,7 @@ export default function MultiSelectSearch({}: MultiSelectSearchProps) {
 
   return (
     <div className="w-full relative">
-      <div className="p-2 rounded-md border border-grey-300">
+      <div className="p-2 rounded-md border border-gray-200">
         <div className="flex flex-wrap gap-2">
           {selectedChannelsInfo.map((channel) => (
             <span
@@ -62,7 +66,10 @@ export default function MultiSelectSearch({}: MultiSelectSearchProps) {
                 channel.type === "eeg" ? "bg-blue-400" : "bg-green-400"
               }`}
               onClick={() => {
-                addModifyChannel({ name: channel.name, type: channel.type === 'eeg' ? 'eog' : 'eeg' });
+                addModifyChannel({
+                  name: channel.name,
+                  type: channel.type,
+                });
               }}
             >
               {channel.name}
@@ -88,13 +95,15 @@ export default function MultiSelectSearch({}: MultiSelectSearchProps) {
         </div>
       </div>
       {open && filteredChannelInfo.length > 0 && (
-        <div className="absolute left-0 right-0 z-10 bg-white  mt-2 p-2 overflow-y-auto rounded-md shadow-md max-h-40 border border-grey-300 ">
+        <div className="absolute left-0 right-0 z-10 bg-white  mt-2 p-2 overflow-y-auto rounded-md shadow-md max-h-40 border border-gray-300 ">
           {filteredChannelInfo.map((channel) => (
             <div
               key={channel.name}
               className="p-1 hover:bg-grey-100 cursor-pointer"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => addModifyChannel({ name: channel.name, type: channel.type })}
+              onClick={() =>
+                addModifyChannel({ name: channel.name, type: channel.type })
+              }
             >
               {channel.name}
             </div>

@@ -1,34 +1,29 @@
-import { AlertCircle, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { EventTableType } from "../../types/eventTable";
+import { useMetadataStore } from "../../stores/summaryStore";
+import ErrorToolTip from "../../utils/errorToolTip";
 
 interface EventTableProps {
   events: EventTableType[];
   setEvents: React.Dispatch<React.SetStateAction<EventTableType[]>>;
+  setIsEventsTableInvalid: React.Dispatch<React.SetStateAction<boolean>>;
 }
-const ErrorToolTip = ({ message }: { message: string }) => {
-  return (
-    <div className="absolute z-10 top-1/2 -translate-y-1/2 left-full ml-2 bg-red-50 border border-red-200 rounded px-2 py-1 shadown-sm">
-      <div className="flex items-center">
-        <AlertCircle size={14} className="text-red-500 mr-1 flex-shrink-0" />
-        <span className="text-xs text-red-600 font-medium">{message}</span>
-      </div>
-      <div className="absolute top-1/2 -left-1 w-1 h-2 bg-red-50 border-1 border-t border-red-200 transform -rotate-45 translate-y-[-50%]" />
-    </div>
-  );
-};
-const EventTable = ({ events, setEvents }: EventTableProps) => {
+
+const EventTable = ({
+  events,
+  setEvents,
+  setIsEventsTableInvalid,
+}: EventTableProps) => {
+  const { metadata } = useMetadataStore();
   interface ValidationErrors {
     [eventId: number]: { name?: string; timeRange?: string };
   }
+  const rowDeleteDisabled = useMemo(
+    () => Object.keys(events).length === 1,
+    [events]
+  );
   const [errors, setErrors] = useState<ValidationErrors>({});
-  const defaultNewEvent = {
-    id: 1,
-    name: "New Event",
-    startTime: 0,
-    endTime: 30,
-    duration: 10,
-  };
   const resequenceIds = (eventList: EventTableType[]) => {
     return eventList.map((event, index) => ({
       ...event,
@@ -38,12 +33,16 @@ const EventTable = ({ events, setEvents }: EventTableProps) => {
   const addRow = (rowIndex: number) => {
     const newEvents = [...events];
     const insertAt = rowIndex + 1;
-    const newEvent = {
-      ...defaultNewEvent,
+    const { endTime } = events[rowIndex];
+    const defaultNewEvent: EventTableType = {
       id: -1,
+      name: `E${rowIndex + 2}`,
+      startTime: endTime + 1,
+      endTime: Math.floor(metadata?.duration ?? endTime + 1),
+      duration: Math.floor((metadata?.duration ?? endTime + 1) - (endTime + 1)),
     };
 
-    newEvents.splice(insertAt, 0, newEvent);
+    newEvents.splice(insertAt, 0, defaultNewEvent);
     const resequencedEvents = resequenceIds(newEvents);
     setEvents(resequencedEvents);
   };
@@ -67,6 +66,17 @@ const EventTable = ({ events, setEvents }: EventTableProps) => {
       if (event.startTime >= event.endTime) {
         if (!newErrors[event.id]) newErrors[event.id] = {};
         newErrors[event.id].timeRange = "Start time must be less than end time";
+      } else if (metadata?.duration) {
+        if (event.startTime > metadata?.duration) {
+          if (!newErrors[event.id]) newErrors[event.id] = {};
+          newErrors[event.id].timeRange =
+            "Start Time must be less than duration in the edf file";
+        }
+        if (event.endTime > metadata?.duration) {
+          if (!newErrors[event.id]) newErrors[event.id] = {};
+          newErrors[event.id].timeRange =
+            "End Time must be less than duration in the edf file";
+        }
       }
     });
     events.forEach((event) => {
@@ -75,8 +85,9 @@ const EventTable = ({ events, setEvents }: EventTableProps) => {
         newErrors[event.id].name = "Duplicate event name";
       }
     });
+    setIsEventsTableInvalid(Object.keys(newErrors).length > 0);
     setErrors(newErrors);
-  }, [events]);
+  }, [events, metadata?.duration]);
 
   const handleRowChange = (id: number, field: string, value: string) => {
     const updatedEvents = events.map((event) => {
@@ -89,6 +100,7 @@ const EventTable = ({ events, setEvents }: EventTableProps) => {
     });
     setEvents(updatedEvents);
   };
+
   return (
     <div className="p-6 max-w-4xl ">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -96,7 +108,7 @@ const EventTable = ({ events, setEvents }: EventTableProps) => {
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Event Id
+                Event Name
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Start Time
@@ -120,7 +132,8 @@ const EventTable = ({ events, setEvents }: EventTableProps) => {
                     <input
                       type="text"
                       value={event.name}
-                      className={`border-0 bg-transparent focus:outline-none focus:ring-0 w-full ${
+                      placeholder="Enter Event name"
+                      className={`border-0 bg-transparent focus:outline-none focus:ring-0 w-full placeholder:text-sm${
                         errors[event.id]?.name
                           ? "border-b border-red-300 text-red-600"
                           : ""
@@ -192,7 +205,12 @@ const EventTable = ({ events, setEvents }: EventTableProps) => {
                   <div className="flex justify-end space-x-2">
                     <button
                       onClick={() => removeRow(rowIndex)}
-                      className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded "
+                      disabled={rowDeleteDisabled}
+                      className={`text-gray-400 transition-colors p-1 rounded ${
+                        rowDeleteDisabled
+                          ? "text-gray-300"
+                          : "hover: text-red-500"
+                      }`}
                     >
                       <Trash2 size={18} />
                     </button>
