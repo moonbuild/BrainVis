@@ -10,6 +10,7 @@ import { useEEGChannelStore } from "../../../stores/eegSettingsStore";
 import CustomLabelInput from "./CustomLabelInput";
 import { useFileDataStore } from "../../../stores/fileStore";
 import { initialSettingsData } from "./initialSettingsData";
+import { useEEGImageData } from "../../../stores/eegImageData";
 
 interface SettingsCardProps {
   isDark: boolean;
@@ -42,27 +43,28 @@ function SettingsCard({
   const [showDrawer, setShowDrawer] = useState(false);
   const openDrawer = () => setShowDrawer(true);
   const closeDrawer = () => setShowDrawer(false);
+  const { resetPlots } = useEEGImageData();
 
   // const checkBaseValidity = useCallback(
   //   (filterFetch: boolean) => {
   //     const newErrors: EEGErrors = {};
-      // if (!settingsData.samplingFreq)
-      //   newErrors.samplingFreq = "Sampling Freq cannot be empty";
-      // if (!settingsData.lowFreq) newErrors.lowFreq = "Low Freq cannot be empty";
-      // if (!settingsData.highFreq)
-      //   newErrors.highFreq = "High Freq cannot be empty";
-      // if (!settingsData.montageType)
-      //   newErrors.montageType = "Montage Type cannot be empty";
-      // if (!settingsData.eegReference)
-      //   newErrors.eegReference = "EEG Reference cannot be empty";
-      // if (!filterFetch) {
-      //   if (!settingsData.epochTmin)
-      //     newErrors.montageType = "Epoch Tmin cannot be empty";
-      //   if (!settingsData.epochTmax)
-      //     newErrors.montageType = "Epoch Tmax cannot be empty";
-      //   if (!settingsData.baseline)
-      //     newErrors.montageType = "Baseline cannot be empty";
-      // }
+  // if (!settingsData.samplingFreq)
+  //   newErrors.samplingFreq = "Sampling Freq cannot be empty";
+  // if (!settingsData.lowFreq) newErrors.lowFreq = "Low Freq cannot be empty";
+  // if (!settingsData.highFreq)
+  //   newErrors.highFreq = "High Freq cannot be empty";
+  // if (!settingsData.montageType)
+  //   newErrors.montageType = "Montage Type cannot be empty";
+  // if (!settingsData.eegReference)
+  //   newErrors.eegReference = "EEG Reference cannot be empty";
+  // if (!filterFetch) {
+  //   if (!settingsData.epochTmin)
+  //     newErrors.montageType = "Epoch Tmin cannot be empty";
+  //   if (!settingsData.epochTmax)
+  //     newErrors.montageType = "Epoch Tmax cannot be empty";
+  //   if (!settingsData.baseline)
+  //     newErrors.montageType = "Baseline cannot be empty";
+  // }
   //     const noErrors = Object.values(newErrors).every((err) => err === "");
   //     setSettingsErrors((prev) => ({ ...prev, ...newErrors }));
   //     return noErrors;
@@ -116,12 +118,12 @@ function SettingsCard({
   const handleFilterFetch = useCallback(() => {
     const expectedValidity = raiseExpectedValidity(true);
     if (!expectedValidity || !file) return;
-        const {
-      samplingFreq= initialSettingsData.samplingFreq,
-      lowFreq= initialSettingsData.lowFreq,
-      highFreq= initialSettingsData.highFreq,
-      montageType= initialSettingsData.montageType,
-      eegReference= initialSettingsData.eegReference,
+    const {
+      samplingFreq = initialSettingsData.samplingFreq,
+      lowFreq = initialSettingsData.lowFreq,
+      highFreq = initialSettingsData.highFreq,
+      montageType = initialSettingsData.montageType,
+      eegReference = initialSettingsData.eegReference,
     } = settingsData;
     const finalChannelTypes: Record<string, string> = {};
     selectedChannelsInfo.forEach((ch) => {
@@ -151,22 +153,22 @@ function SettingsCard({
       eventData[name] = [id, startTime, endTime, duration];
     });
     const {
-      samplingFreq=initialSettingsData.samplingFreq,
-      lowFreq=initialSettingsData.lowFreq,
-      highFreq=initialSettingsData.highFreq,
-      epochTmin=initialSettingsData.epochTmin,
-      epochTmax=initialSettingsData.epochTmax,
-      baseline=initialSettingsData.baseline,
-      montageType=initialSettingsData.montageType,
-      eegReference=initialSettingsData.eegReference,
+      samplingFreq = initialSettingsData.samplingFreq,
+      lowFreq = initialSettingsData.lowFreq,
+      highFreq = initialSettingsData.highFreq,
+      epochTmin = initialSettingsData.epochTmin,
+      epochTmax = initialSettingsData.epochTmax,
+      baseline = initialSettingsData.baseline,
+      montageType = initialSettingsData.montageType,
+      eegReference = initialSettingsData.eegReference,
     } = settingsData;
 
     const payload = JSON.stringify({
       sampling_freq: samplingFreq,
       low_freq: lowFreq,
       high_freq: highFreq,
-      epoch_tmin: epochTmin,
-      epoch_tmax: epochTmax,
+      epoch_tmin: Number(epochTmin),
+      epoch_tmax: Number(epochTmax),
       epoch_baseline: baseline,
       montage_type: montageType,
       eeg_reference: eegReference,
@@ -192,22 +194,22 @@ function SettingsCard({
   //   return error;
   // };
 
-  const handleChange = (
-    name: keyof typeof settingsData,
-    value: string,
-    type: "number" | "string"
-  ) => {
-    // const error = validateField(name, value);
+  const handleChange = (name: keyof typeof settingsData, value: string) => {
     setSettingsData((prev) => ({
       ...prev,
-      [name]: type === "string" ? value : Number(value),
+      [name]: value,
     }));
-    // setSettingsErrors((prev) => ({
-    //   ...prev,
-    //   [name]: error,
-    // }));
   };
 
+  const handleNumberChange = (
+    name: keyof typeof settingsData,
+    value: number
+  ) => {
+    setSettingsData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
   const handleBaselineChange = (value: string) => {
     setBaselineString(value);
     const [val1, val2] = value.split(",").map((v) => v.trim().toLowerCase());
@@ -217,7 +219,6 @@ function SettingsCard({
     ];
     setSettingsData((prev) => ({ ...prev, baseline: parsedBaselines }));
   };
-
   return (
     <>
       <div className="w-3/4 bg-white rounded-xl shadow-lg overflow-hidden p-6 transition-all">
@@ -253,8 +254,9 @@ function SettingsCard({
               name="samplingFreq"
               value={settingsData.samplingFreq}
               placeholder="Enter sampling freq"
+              type="number"
               onChange={(e) =>
-                handleChange("samplingFreq", e.target.value, "number")
+                handleNumberChange("samplingFreq", Number(e.target.value))
               }
             />
             <CustomLabelInput
@@ -262,8 +264,9 @@ function SettingsCard({
               name="lowFreq"
               value={settingsData.lowFreq}
               placeholder="Enter low freq"
+              type="number"
               onChange={(e) =>
-                handleChange("lowFreq", e.target.value, "number")
+                handleNumberChange("lowFreq", Number(e.target.value))
               }
             />
             <CustomLabelInput
@@ -271,8 +274,9 @@ function SettingsCard({
               name="highFreq"
               value={settingsData.highFreq}
               placeholder="Enter high freq"
+              type="number"
               onChange={(e) =>
-                handleChange("highFreq", e.target.value, "number")
+                handleNumberChange("highFreq", Number(e.target.value))
               }
             />
           </div>
@@ -284,9 +288,10 @@ function SettingsCard({
               value={settingsData.montageType}
               placeholder="Enter montage type"
               errorMessage={settingsErrors.montageType}
-              onChange={(e) =>
-                handleChange("montageType", e.target.value, "string")
-              }
+              onChange={(e) => {
+                resetPlots();
+                handleChange("montageType", e.target.value);
+              }}
             />
             <CustomLabelInput
               label="EEG Reference"
@@ -294,9 +299,7 @@ function SettingsCard({
               value={settingsData.eegReference}
               placeholder="Enter eeg reference"
               errorMessage={settingsErrors.eegReference}
-              onChange={(e) =>
-                handleChange("eegReference", e.target.value, "string")
-              }
+              onChange={(e) => handleChange("eegReference", e.target.value)}
             />
           </div>
         </div>
@@ -342,8 +345,12 @@ function SettingsCard({
                       name="samplingFreq"
                       value={settingsData.samplingFreq}
                       placeholder="Enter sampling freq"
+                      type="number"
                       onChange={(e) =>
-                        handleChange("samplingFreq", e.target.value, "number")
+                        handleNumberChange(
+                          "samplingFreq",
+                          Number(e.target.value)
+                        )
                       }
                     />
                     <CustomLabelInput
@@ -351,8 +358,9 @@ function SettingsCard({
                       name="lowFreq"
                       value={settingsData.lowFreq}
                       placeholder="Enter low freq"
+                      type="number"
                       onChange={(e) =>
-                        handleChange("lowFreq", e.target.value, "number")
+                        handleNumberChange("lowFreq", Number(e.target.value))
                       }
                     />
                     <CustomLabelInput
@@ -360,8 +368,9 @@ function SettingsCard({
                       name="highFreq"
                       value={settingsData.highFreq}
                       placeholder="Enter high freq"
+                      type="number"
                       onChange={(e) =>
-                        handleChange("highFreq", e.target.value, "number")
+                        handleNumberChange("highFreq", Number(e.target.value))
                       }
                     />
                   </div>
@@ -374,7 +383,7 @@ function SettingsCard({
                       placeholder="Enter montage type"
                       errorMessage={settingsErrors.montageType}
                       onChange={(e) =>
-                        handleChange("montageType", e.target.value, "string")
+                        handleChange("montageType", e.target.value)
                       }
                     />
                     <CustomLabelInput
@@ -384,7 +393,7 @@ function SettingsCard({
                       placeholder="Enter eeg reference"
                       errorMessage={settingsErrors.eegReference}
                       onChange={(e) =>
-                        handleChange("eegReference", e.target.value, "string")
+                        handleChange("eegReference", e.target.value)
                       }
                     />
                   </div>
@@ -406,8 +415,9 @@ function SettingsCard({
                       name="epochTmin"
                       value={settingsData.epochTmin}
                       placeholder="Enter epoch tmin"
+                      type="number"
                       onChange={(e) =>
-                        handleChange("epochTmin", e.target.value, "number")
+                        handleChange("epochTmin", e.target.value)
                       }
                     />
                     <CustomLabelInput
@@ -415,8 +425,9 @@ function SettingsCard({
                       name="epochTmax"
                       value={settingsData.epochTmax}
                       placeholder="Enter epoch tmax"
+                      type="number"
                       onChange={(e) =>
-                        handleChange("epochTmax", e.target.value, "number")
+                        handleChange("epochTmax", e.target.value)
                       }
                     />
                     <CustomLabelInput
