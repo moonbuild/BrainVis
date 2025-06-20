@@ -9,6 +9,7 @@ import { useFilterRequest } from "./services/hooks/useFilterRequest";
 import { useEventsRequest } from "./services/hooks/useEventsRequest";
 import { useToastAPI } from "./services/hooks/useToastAPI";
 import { activeTabItem } from "./types/VisualisationCard";
+import './App.css';
 
 function App() {
   // store

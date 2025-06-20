@@ -1,4 +1,4 @@
-import { useCallback} from "react";
+import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { useChannelNames } from "../../../services/hooks/useChannels";
 import { useFileDataStore } from "../../../stores/fileStore";

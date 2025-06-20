@@ -7,6 +7,7 @@ interface CustomLabelInputProps {
   label: React.ReactNode;
   name: string;
   value?: number | string;
+  type?: string;
   placeholder: string;
   errorMessage?: string;
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
@@ -15,6 +16,7 @@ const CustomLabelInput = ({
   label,
   name,
   value,
+  type,
   placeholder,
   errorMessage,
   onChange,
@@ -31,7 +33,7 @@ const CustomLabelInput = ({
       <div className="relative">
         <input
           className="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 placeholder:text-sm focus:outline-none focus:ring-blue-500 transition-all text-gray-800 truncate"
-          type="text"
+          type={type ?? "text"}
           name={name}
           value={value}
           placeholder={placeholder}

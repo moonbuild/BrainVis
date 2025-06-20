@@ -29,8 +29,8 @@ interface SettingsDataProps {
   highFreq?: number;
   montageType?: string;
   eegReference?: string;
-  epochTmin?: number;
-  epochTmax?: number;
+  epochTmin?: string;
+  epochTmax?: string;
   baseline?: [number | undefined, number | undefined];
 }
 
