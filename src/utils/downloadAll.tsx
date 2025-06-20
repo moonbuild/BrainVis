@@ -1,209 +1,139 @@
-import { useEffect, useState } from "react";
-import { EpochsPlotMap, ImageURLBlob } from "../types/Plot";
-import { AsyncZipDeflate, Zip } from "fflate";
 import { Download, LoaderCircle, Sparkles } from "lucide-react";
-import { MetaData } from "../stores/summaryStore";
+import { EpochsPlotMap, ImageURLBlob } from "../types/Plot";
+import { MetaData, useMetadataStore } from "../stores/summaryStore";
+import { useEffect, useState } from "react";
+import JSZip from "jszip";
+import { useEEGImageData } from "../stores/eegImageData";
+import { toast } from "react-toastify";
 
-export const DownloadImages = ({
-  epochsPlotMap,
-  filterPlot,
-  metadata,
-}: {
-  epochsPlotMap: EpochsPlotMap;
-  filterPlot?: ImageURLBlob;
-  metadata?: MetaData;
-}) => {
-  const [downloadURL, setDownloadURL] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+export const DownloadImages = ({}: {}) => {
+  const { metadata } = useMetadataStore();
+  const { filter_plot, epochs_plot } = useEEGImageData();
+
+  const [downloadURL, setDownloadURL] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
   const processEventPlotFile = async (
-    zip: Zip,
+    zip: JSZip,
     eventName: string,
     plotType: string,
-    plotData: ImageURLBlob,
-    processedFiles: number
+    plotData: ImageURLBlob
   ): Promise<boolean> => {
     if (!plotData || !plotData.blob) {
-      console.warn(`Missing blob for ${eventName} - ${plotType}`);
+      console.warn(`Missing blob for ${eventName}`);
       return false;
     }
     try {
       const arrayBuffer = await plotData.blob.arrayBuffer();
-      const buffer = new Uint8Array(arrayBuffer);
+      const filePath = `${eventName}/${plotType}.png`;
 
-      const filePath = `${eventName}/${eventName}_${plotType}.png`;
-
-      const asyncZip = new AsyncZipDeflate(filePath);
-
-      asyncZip.ondata = (err, data, final) => {
-        if (err) {
-          console.error("There was an error when compressing the files: ", err);
-          return;
-        }
-        if (final) processedFiles++;
-      };
-      zip.add(asyncZip);
-      asyncZip.push(buffer, true);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      zip.file(filePath, arrayBuffer);
       return true;
     } catch (err) {
-      console.error(
-        `Error processing the plot ${plotType} of Event: ${eventName}: `,
-        err
-      );
+      console.error(`Error processing ${eventName}/${plotType}: ${err}`);
       return false;
     }
   };
 
-  const processFilterMap = async (
-    zip: Zip,
+  const processFilterFile = async (
+    zip: JSZip,
     filterPlot: ImageURLBlob
   ): Promise<boolean> => {
     try {
-      const arrayBuffer = await filterPlot.blob.arrayBuffer();
-      const buffer = new Uint8Array(arrayBuffer);
-      const filename = "filter_comparision.png";
-      const asyncZip = new AsyncZipDeflate(filename);
-      asyncZip.ondata = (err, data, final) => {
-        if (err) {
-          console.error(
-            "There was an error when compressing filter comparision image :",
-            err
-          );
-          return;
-        }
-      };
-      zip.add(asyncZip);
-      asyncZip.push(buffer, true);
+      const arrayBuffer = filterPlot.blob.arrayBuffer();
+      const filePath = "filterPlot.png";
+      zip.file(filePath, arrayBuffer);
       return true;
     } catch (err) {
-      console.error("Error processing filterPlot blob: ", err);
+      console.warn(`Error processing Filter Plot: ${err}`);
       return false;
     }
   };
-  const processMetadata = async (zip: Zip, metadata:MetaData): Promise<boolean> => {
+
+  const processMetadata = async (
+    zip: JSZip,
+    metadata: MetaData
+  ): Promise<boolean> => {
     try {
-      const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], {
-        type: "application/json",
-      });
-      const arrayBuffer = await metadataBlob.arrayBuffer();
-      const buffer = new Uint8Array(arrayBuffer);
-      const filename = "metadata.json";
-      const asyncZip = new AsyncZipDeflate(filename);
-      asyncZip.ondata = (err, data, final) => {
-        if (err) {
-          console.error("There was an error when compressing metadata: ", err);
-          return;
-        }
-      };
-      zip.add(asyncZip);
-      asyncZip.push(buffer, true);
+      const metadataContent = JSON.stringify(metadata);
+      const filePath = "metadata.json";
+      zip.file(filePath, metadataContent);
       return true;
     } catch (err) {
-      console.error("Error serializing metadata: ", err);
+      console.warn(`Error processing Metadata: ${err}`);
       return false;
     }
   };
-  const generateZip = async (epochsPlotMap: EpochsPlotMap) => {
+
+  const generateZip = async (
+    epochsPlotMap: EpochsPlotMap,
+    filterPlot?: ImageURLBlob,
+    metadata?: MetaData
+  ) => {
     setIsLoading(true);
     setError("");
 
     try {
-      const zip = new Zip();
-      const zipData: Uint8Array[] = [];
-
-      zip.ondata = (err, data, final) => {
-        if (err) {
-          console.error("Error in zip data handling: ", err);
-          return;
-        }
-        zipData.push(data);
-      };
-      let processedFiles = 0;
+      const zip = new JSZip();
       let totalFiles = 0;
+      let processedFiles = 0;
+      let hasAdditionalContent = false;
 
       for (const [eventName, eventPlot] of Object.entries(epochsPlotMap)) {
         for (const [plotType, plotData] of Object.entries(eventPlot)) {
           totalFiles++;
-          processEventPlotFile(
+          const success = await processEventPlotFile(
             zip,
             eventName,
             plotType,
-            plotData,
-            processedFiles
+            plotData
           );
+          if (success) processedFiles++;
         }
       }
+
       if (filterPlot?.blob) {
-        processFilterMap(zip, filterPlot)
+        const success = await processFilterFile(zip, filterPlot);
+        if (success) {
+          hasAdditionalContent = true;
+        }
       }
       if (metadata) {
-        processMetadata(zip, metadata)
-      }
-      const waitForProcessing = async () => {
-        const maxWait = 10000;
-        const startTime = Date.now();
-        while (processedFiles < totalFiles) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          if (Date.now() - startTime > maxWait) {
-            console.warn(
-              `Timeout waiting for all files to process. Processed ${processedFiles}/${totalFiles}`
-            );
-            break;
-          }
+        const success = await processMetadata(zip, metadata);
+        if (success) {
+          hasAdditionalContent = true;
         }
-      };
-      if (totalFiles > 0) {
-        await waitForProcessing();
-      } else {
-        setError("No valid files to compress");
+      }
+      if (totalFiles === 0 && !hasAdditionalContent) {
+        setError("No Valid Files to compress");
         setIsLoading(false);
         return;
       }
-      zip.end();
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(() => {
-          console.warn("Timeout waiting for zip finalization");
-          resolve();
-        }, 3000);
-        const checkInterval = setInterval(() => {
-          if (zipData.length > 0) {
-            clearTimeout(timeout);
-            clearInterval(checkInterval);
-            resolve();
-          }
-        }, 100);
-      });
-
-      if (zipData.length === 0) {
-        setError("Failed to generate zip file (no data)");
+      if (totalFiles > 0 && processedFiles === 0 && !hasAdditionalContent) {
+        setError("Failed to Process Files");
         setIsLoading(false);
         return;
       }
-
-      const totalLength = zipData.reduce((len, arr) => len + arr.length, 0);
-      const zipBytes = new Uint8Array(totalLength);
-      let offset = 0;
-
-      zipData.forEach((arr) => {
-        zipBytes.set(arr, offset);
-        offset += arr.length;
+      const zipBlob = await zip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: {
+          level: 6,
+        },
       });
-
-      const blob = new Blob([zipBytes], { type: "application/zip" });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(zipBlob);
       setDownloadURL(url);
     } catch (err) {
-      console.error("There was an error when generating the zip: ", err);
-      setError("Failed to generate zip File.");
+      setError("Failed to generate zip file");
     } finally {
       setIsLoading(false);
     }
   };
+
   const handleDownload = () => {
     if (downloadURL) {
-      const filename = "event_plots.zip";
+      const filename = "events_plot.zip";
       const link = document.createElement("a");
       link.download = filename;
       link.href = downloadURL;
@@ -211,9 +141,10 @@ export const DownloadImages = ({
       link.click();
       document.body.removeChild(link);
     } else {
-      generateZip(epochsPlotMap);
+      generateZip(epochs_plot, filter_plot, metadata);
     }
   };
+
   useEffect(() => {
     return () => {
       if (downloadURL) {
@@ -222,27 +153,35 @@ export const DownloadImages = ({
     };
   }, [downloadURL]);
 
+  useEffect(() => {
+    if (error.length > 0) {
+      toast.error(error, {
+        isLoading: false,
+        autoClose: 6000,
+        pauseOnHover: true,
+      });
+    }
+  }, [error]);
+
   return (
-    <>
-      <button
-        onClick={handleDownload}
-        className="bg-orange-500 cursor-pointer p-2 rounded-lg hover:bg-orange-600 "
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <span className="flex items-center gap-2 text-white">
-            Generating Zip <LoaderCircle size={17} className="animate-spin" />
-          </span>
-        ) : downloadURL ? (
-          <span className="flex items-center gap-2 text-white">
-            Download Zip <Download size={17} />
-          </span>
-        ) : (
-          <span className="flex items-center gap-2 text-white">
-            Generate Zip <Sparkles size={17} />
-          </span>
-        )}
-      </button>
-    </>
+    <button
+      onClick={handleDownload}
+      className="bg-orange-500 cursor-pointer p-2 rounded-lg hover:bg-orange-600"
+      disabled={isLoading}
+    >
+      {isLoading ? (
+        <span className="flex items-center gap-2 text-white">
+          Generating Zip <LoaderCircle size={18} className="animate-spin" />
+        </span>
+      ) : downloadURL ? (
+        <span className="flex items-center gap-2 text-white">
+          Download Zip <Download size={18} />
+        </span>
+      ) : (
+        <span className="flex items-center gap-2 text-white">
+          Generate Zip <Sparkles size={18} />
+        </span>
+      )}
+    </button>
   );
 };

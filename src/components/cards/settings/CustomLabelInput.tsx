@@ -33,7 +33,7 @@ const CustomLabelInput = ({
       <div className="relative">
         <input
           className="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 placeholder:text-sm focus:outline-none focus:ring-blue-500 transition-all text-gray-800 truncate"
-          type={type ?? 'text'}
+          type={type ?? "text"}
           name={name}
           value={value}
           placeholder={placeholder}

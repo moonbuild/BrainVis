@@ -3,14 +3,13 @@ import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
 
 import MultiSelectSearch from "../../elements/multiSelectSearch";
-import { EEGErrors, SettingsDataProps } from "../../../types/Settings";
+import { SettingsDataProps } from "../../../types/Settings";
 import { EventTableType, initialEvent } from "../../../types/eventTable";
 import EventTable from "../../elements/eventTable";
 import { useEEGChannelStore } from "../../../stores/eegSettingsStore";
 import CustomLabelInput from "./CustomLabelInput";
 import { useFileDataStore } from "../../../stores/fileStore";
 import { initialSettingsData } from "./initialSettingsData";
-import { useEEGImageData } from "../../../stores/eegImageData";
 
 interface SettingsCardProps {
   isDark: boolean;
@@ -37,40 +36,10 @@ function SettingsCard({
   const [isEventsTableInvalid, setIsEventsTableInvalid] =
     useState<boolean>(false);
 
-  const [settingsErrors, setSettingsErrors] = useState<EEGErrors>({});
-
   // drawer
   const [showDrawer, setShowDrawer] = useState(false);
   const openDrawer = () => setShowDrawer(true);
   const closeDrawer = () => setShowDrawer(false);
-  const { resetPlots } = useEEGImageData();
-
-  // const checkBaseValidity = useCallback(
-  //   (filterFetch: boolean) => {
-  //     const newErrors: EEGErrors = {};
-  // if (!settingsData.samplingFreq)
-  //   newErrors.samplingFreq = "Sampling Freq cannot be empty";
-  // if (!settingsData.lowFreq) newErrors.lowFreq = "Low Freq cannot be empty";
-  // if (!settingsData.highFreq)
-  //   newErrors.highFreq = "High Freq cannot be empty";
-  // if (!settingsData.montageType)
-  //   newErrors.montageType = "Montage Type cannot be empty";
-  // if (!settingsData.eegReference)
-  //   newErrors.eegReference = "EEG Reference cannot be empty";
-  // if (!filterFetch) {
-  //   if (!settingsData.epochTmin)
-  //     newErrors.montageType = "Epoch Tmin cannot be empty";
-  //   if (!settingsData.epochTmax)
-  //     newErrors.montageType = "Epoch Tmax cannot be empty";
-  //   if (!settingsData.baseline)
-  //     newErrors.montageType = "Baseline cannot be empty";
-  // }
-  //     const noErrors = Object.values(newErrors).every((err) => err === "");
-  //     setSettingsErrors((prev) => ({ ...prev, ...newErrors }));
-  //     return noErrors;
-  //   },
-  //   [settingsData]
-  // );
 
   const raiseExpectedValidity = useCallback(
     (filterFetch: boolean) => {
@@ -89,18 +58,8 @@ function SettingsCard({
         );
         return false;
       }
-      const tempErrors = filterFetch
-        ? [
-            settingsErrors.samplingFreq,
-            settingsErrors.lowFreq,
-            settingsErrors.highFreq,
-            settingsErrors.eegReference,
-            settingsErrors.montageType,
-          ]
-        : Object.values(settingsErrors);
-      const noErrors =
-        Object.values(tempErrors).every((error) => !error) &&
-        selectedChannelsInfo.length > 0;
+
+      const noErrors = selectedChannelsInfo.length > 0;
       if (
         (filterFetch && !noErrors) ||
         (!filterFetch && (isEventsTableInvalid || !noErrors))
@@ -112,7 +71,7 @@ function SettingsCard({
       }
       return true;
     },
-    [file, selectedChannelsInfo, settingsErrors]
+    [file, selectedChannelsInfo]
   );
 
   const handleFilterFetch = useCallback(() => {
@@ -287,9 +246,7 @@ function SettingsCard({
               name="montageType"
               value={settingsData.montageType}
               placeholder="Enter montage type"
-              errorMessage={settingsErrors.montageType}
               onChange={(e) => {
-                resetPlots();
                 handleChange("montageType", e.target.value);
               }}
             />
@@ -298,7 +255,6 @@ function SettingsCard({
               name="eegReference"
               value={settingsData.eegReference}
               placeholder="Enter eeg reference"
-              errorMessage={settingsErrors.eegReference}
               onChange={(e) => handleChange("eegReference", e.target.value)}
             />
           </div>
@@ -381,7 +337,6 @@ function SettingsCard({
                       name="montageType"
                       value={settingsData.montageType}
                       placeholder="Enter montage type"
-                      errorMessage={settingsErrors.montageType}
                       onChange={(e) =>
                         handleChange("montageType", e.target.value)
                       }
@@ -391,7 +346,6 @@ function SettingsCard({
                       name="eegReference"
                       value={settingsData.eegReference}
                       placeholder="Enter eeg reference"
-                      errorMessage={settingsErrors.eegReference}
                       onChange={(e) =>
                         handleChange("eegReference", e.target.value)
                       }

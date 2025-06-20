@@ -9,13 +9,11 @@ import {
 } from "lucide-react";
 import { useMetadataStore } from "../../../../stores/summaryStore";
 import CustomLabelText from "./CustomLabelText";
-import { useEEGImageData } from "../../../../stores/eegImageData";
 import { DownloadImages } from "../../../../utils/downloadAll";
 import NoMetadata from "../../../../shared/NoMetadata";
 
 const Summary = () => {
   const { metadata } = useMetadataStore();
-  const { filter_plot, epochs_plot } = useEEGImageData();
 
   if (!metadata) return <NoMetadata />;
 
@@ -24,9 +22,6 @@ const Summary = () => {
       <div className="flex flex-row justify-between">
         <h2 className="text-xl font-medium">Analysis Summary</h2>
         <DownloadImages
-          epochsPlotMap={epochs_plot}
-          filterPlot={filter_plot}
-          metadata={metadata}
         />
       </div>
       <div className="grid grid-cols-2 gap-6">
