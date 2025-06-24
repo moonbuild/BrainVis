@@ -1,7 +1,7 @@
 import { Info, X } from "lucide-react";
 import { ChangeEvent } from "react";
-import { SettingsDataProps } from "../../../types/Settings";
 import { initialSettingsData } from "./initialSettingsData";
+import { SettingsDataProps } from "../../../types/settings";
 
 interface CustomLabelInputProps {
   label: React.ReactNode;

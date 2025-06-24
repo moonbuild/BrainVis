@@ -3,8 +3,8 @@ import { useDropzone } from "react-dropzone";
 import { useChannelNames } from "../../../services/hooks/useChannels";
 import { useFileDataStore } from "../../../stores/fileStore";
 import { useEEGChannelStore } from "../../../stores/eegSettingsStore";
-import { ChannelInfoType } from "../../../types/Settings";
 import { useToastAPI } from "../../../services/hooks/useToastAPI";
+import { ChannelInfoType } from "../../../types/settings";
 
 function FileUploadCard() {
   const { file, setFile } = useFileDataStore();
