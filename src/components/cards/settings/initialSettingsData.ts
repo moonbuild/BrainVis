@@ -1,4 +1,4 @@
-import { SettingsDataProps } from "../../../types/Settings";
+import { SettingsDataProps } from "../../../types/settings";
 
 export const initialSettingsData: SettingsDataProps = {
   samplingFreq: 250,

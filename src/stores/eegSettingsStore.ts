@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { ChannelInfoType } from "../types/Settings";
+import { ChannelInfoType } from "../types/settings";
 
 interface EEGChannelStore {
   allChannelsInfo: ChannelInfoType[];

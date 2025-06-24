@@ -3,13 +3,13 @@ import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
 
 import MultiSelectSearch from "../../elements/multiSelectSearch";
-import { SettingsDataProps } from "../../../types/Settings";
 import { EventTableType, initialEvent } from "../../../types/eventTable";
 import EventTable from "../../elements/eventTable";
 import { useEEGChannelStore } from "../../../stores/eegSettingsStore";
 import CustomLabelInput from "./CustomLabelInput";
 import { useFileDataStore } from "../../../stores/fileStore";
 import { initialSettingsData } from "./initialSettingsData";
+import { SettingsDataProps } from "../../../types/settings";
 
 interface SettingsCardProps {
   isDark: boolean;
